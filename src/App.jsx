@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import {
   MessageCircle, FileText, GraduationCap, Code2, Calendar,
   ArrowUp, Paperclip, Globe, Mic, Eye, EyeOff, ChevronRight,
@@ -6,7 +6,7 @@ import {
   Settings, User, Palette, Cpu, Shield, Keyboard, Info,
   Download, LogOut, Sliders, Save, AlertTriangle, RefreshCw,
   Upload, Search, Bell, Key, Zap, BookOpen, Hash, CheckSquare,
-  ChevronDown, PlugZap
+  PlugZap, ArrowRight
 } from 'lucide-react'
 import { supabase } from './supabase'
 
@@ -20,11 +20,11 @@ const MODI = [
 ]
 
 const MODELLE = [
-  { id: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B',     desc: 'Empfohlen — stark & schnell' },
-  { id: 'llama-3.1-8b-instant',    label: 'Llama 3.1 8B',      desc: 'Sehr schnell, leichter' },
-  { id: 'mixtral-8x7b-32768',      label: 'Mixtral 8x7B',      desc: 'Gut für Deutsch' },
-  { id: 'gemma2-9b-it',            label: 'Gemma 2 9B',         desc: 'Google Modell' },
-  { id: 'deepseek-r1-distill-llama-70b', label: 'DeepSeek R1', desc: 'Stark bei Mathe & Code' },
+  { id: 'llama-3.3-70b-versatile',       label: 'Llama 3.3 70B',  desc: 'Empfohlen — stark & schnell' },
+  { id: 'llama-3.1-8b-instant',          label: 'Llama 3.1 8B',   desc: 'Sehr schnell, leichter' },
+  { id: 'mixtral-8x7b-32768',            label: 'Mixtral 8x7B',   desc: 'Gut für Deutsch' },
+  { id: 'gemma2-9b-it',                  label: 'Gemma 2 9B',     desc: 'Google Modell' },
+  { id: 'deepseek-r1-distill-llama-70b', label: 'DeepSeek R1',    desc: 'Stark bei Mathe & Code' },
 ]
 
 const INTEGRATIONEN = [
@@ -60,13 +60,162 @@ function ladeSettings() { try { return { ...DEFAULT_SETTINGS, ...JSON.parse(loca
 function speichereSettings(s) { localStorage.setItem('clue-settings', JSON.stringify(s)) }
 function neuerChat(modusId) { return { id: Date.now().toString(), modusId, titel: 'Neuer Chat', nachrichten: [], ts: Date.now() } }
 
+// ─── ONBOARDING ───────────────────────────────────────────────────────────────
+const OB_SLIDES = [
+  {
+    id: 0, tag: 'Willkommen',
+    headline: 'Triff Clue.',
+    sub: 'Dein persönlicher KI-Assistent — intelligent, schnell und immer verfügbar.',
+    visual: () => (
+      <div className="ob-hero-visual">
+        <div className="ob-logo-big">C</div>
+        <div className="ob-rings">
+          <div className="ob-ring ob-ring-1" />
+          <div className="ob-ring ob-ring-2" />
+          <div className="ob-ring ob-ring-3" />
+        </div>
+        <div className="ob-orbits">
+          {[MessageCircle, Code2, GraduationCap, Globe, Calendar].map((Icon, i) => (
+            <div key={i} className={`ob-orbit-item ob-orbit-${i}`}><Icon size={16} strokeWidth={1.8} /></div>
+          ))}
+        </div>
+      </div>
+    ),
+  },
+  {
+    id: 1, tag: 'Modi',
+    headline: 'Fünf Experten. Ein Assistent.',
+    sub: 'Clue wechselt nahtlos zwischen Chat, Dokumente, Lernen, Code und Termine.',
+    visual: () => (
+      <div className="ob-modes-visual">
+        {[
+          { icon: MessageCircle, label: 'Chat',      color: '#818cf8', desc: 'Fragen, Ideen, Gespräche' },
+          { icon: FileText,      label: 'Dokumente', color: '#34d399', desc: 'Texte analysieren & zusammenfassen' },
+          { icon: GraduationCap, label: 'Lernen',    color: '#fbbf24', desc: 'Quizfragen & Erklärungen' },
+          { icon: Code2,         label: 'Code',      color: '#60a5fa', desc: 'Schreiben, debuggen, verstehen' },
+          { icon: Calendar,      label: 'Termine',   color: '#f472b6', desc: 'Planen & Zeitmanagement' },
+        ].map((m, i) => {
+          const Icon = m.icon
+          return (
+            <div key={i} className="ob-mode-card" style={{ animationDelay: `${i * 0.08}s` }}>
+              <div className="ob-mode-icon" style={{ background: m.color + '22', color: m.color }}><Icon size={18} strokeWidth={1.8} /></div>
+              <div><div className="ob-mode-label">{m.label}</div><div className="ob-mode-desc">{m.desc}</div></div>
+            </div>
+          )
+        })}
+      </div>
+    ),
+  },
+  {
+    id: 2, tag: 'Features',
+    headline: 'Mehr als nur Chat.',
+    sub: 'Websuche, Spracheingabe, Datei-Upload und smarte Vorlagen — alles in einem.',
+    visual: () => (
+      <div className="ob-features-visual">
+        {[
+          { icon: Globe,    color: '#60a5fa', label: 'Google-Suche',  desc: 'Aktuelle Infos direkt im Chat' },
+          { icon: Mic,      color: '#f472b6', label: 'Spracheingabe', desc: 'Einfach drauflosreden' },
+          { icon: FileText, color: '#34d399', label: 'Datei-Upload',  desc: 'PDFs & Bilder analysieren' },
+          { icon: Zap,      color: '#fbbf24', label: 'Vorlagen',      desc: 'Schnellantworten speichern' },
+        ].map((f, i) => {
+          const Icon = f.icon
+          return (
+            <div key={i} className="ob-feature-item" style={{ animationDelay: `${i * 0.1}s` }}>
+              <div className="ob-feature-icon" style={{ background: f.color + '18', color: f.color }}><Icon size={20} strokeWidth={1.8} /></div>
+              <div className="ob-feature-text"><div className="ob-feature-label">{f.label}</div><div className="ob-feature-desc">{f.desc}</div></div>
+              <div className="ob-feature-check" style={{ color: f.color }}><Check size={14} strokeWidth={2.5} /></div>
+            </div>
+          )
+        })}
+      </div>
+    ),
+  },
+  {
+    id: 3, tag: 'Privatsphäre',
+    headline: 'Deine Daten gehören dir.',
+    sub: 'Clue speichert alles lokal auf deinem Gerät. Kein Cloud-Zwang, keine Weitergabe.',
+    visual: () => (
+      <div className="ob-privacy-visual">
+        <div className="ob-privacy-shield">
+          <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
+            <path d="M40 8L12 20V38C12 54 24 68 40 72C56 68 68 54 68 38V20L40 8Z" fill="rgba(129,140,248,0.12)" stroke="#818cf8" strokeWidth="1.5" />
+            <path d="M28 40L36 48L52 32" stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </div>
+        <div className="ob-privacy-items">
+          {['Chats lokal im Browser gespeichert', 'KI-Anfragen verschlüsselt über Groq', 'Supabase speichert nur Login-Daten', 'Keine Weitergabe an Dritte'].map((item, i) => (
+            <div key={i} className="ob-privacy-item" style={{ animationDelay: `${i * 0.1}s` }}>
+              <div className="ob-privacy-dot" />{item}
+            </div>
+          ))}
+        </div>
+      </div>
+    ),
+  },
+]
+
+function Onboarding({ onFinish }) {
+  const [aktiv, setAktiv] = useState(0)
+  const [animating, setAnimating] = useState(false)
+
+  function naechste() {
+    if (animating) return
+    if (aktiv < OB_SLIDES.length - 1) {
+      setAnimating(true)
+      setTimeout(() => { setAktiv(a => a + 1); setAnimating(false) }, 300)
+    } else {
+      localStorage.setItem('clue-onboarding-done', '1')
+      onFinish()
+    }
+  }
+
+  function zuSlide(i) {
+    if (animating || i === aktiv) return
+    setAnimating(true)
+    setTimeout(() => { setAktiv(i); setAnimating(false) }, 300)
+  }
+
+  const slide = OB_SLIDES[aktiv]
+  const Visual = slide.visual
+  const isLast = aktiv === OB_SLIDES.length - 1
+
+  return (
+    <div className="ob-screen">
+      <div className="ob-bg-glow" />
+      <div className="ob-card">
+        <div className="ob-dots">
+          {OB_SLIDES.map((_, i) => (
+            <button key={i} className={`ob-dot ${i === aktiv ? 'aktiv' : ''} ${i < aktiv ? 'done' : ''}`} onClick={() => zuSlide(i)} />
+          ))}
+        </div>
+        <div className="ob-tag">{slide.tag}</div>
+        <div className={`ob-visual-wrap ${animating ? 'fade-out' : 'fade-in'}`}>
+          <Visual />
+        </div>
+        <div className={`ob-text ${animating ? 'fade-out' : 'fade-in'}`}>
+          <h1 className="ob-headline">{slide.headline}</h1>
+          <p className="ob-sub">{slide.sub}</p>
+        </div>
+        <button className="ob-btn" onClick={naechste}>
+          {isLast ? 'Loslegen' : 'Weiter'}
+          <ArrowRight size={16} strokeWidth={2.5} />
+        </button>
+        {!isLast && (
+          <button className="ob-skip" onClick={() => { localStorage.setItem('clue-onboarding-done', '1'); onFinish() }}>
+            Überspringen
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ─── LOADING ANIMATION ────────────────────────────────────────────────────────
 function LoadingAnimation() {
   return (
     <div className="loading-anim">
       <svg viewBox="0 0 80 40" width="64" height="32" fill="none">
-        <path className="infinity-stroke"
-          d="M40,20 C40,9 28,4 20,9 C12,14 12,26 20,31 C28,36 40,31 40,20 C40,9 52,4 60,9 C68,14 68,26 60,31 C52,36 40,31 40,20" />
+        <path className="infinity-stroke" d="M40,20 C40,9 28,4 20,9 C12,14 12,26 20,31 C28,36 40,31 40,20 C40,9 52,4 60,9 C68,14 68,26 60,31 C52,36 40,31 40,20" />
       </svg>
     </div>
   )
@@ -203,20 +352,14 @@ function importChatgpt(data) {
         const rolle = msg.author?.role === 'assistant' ? 'assistant' : 'user'
         nachrichten.push({ id: Date.now() + Math.random(), rolle, text, ts: (msg.create_time || 0) * 1000 })
       })
-      if (nachrichten.length > 0) {
-        chats[modusId].push({ id: conv.id || Date.now().toString(), modusId, ts: Date.now(), titel: conv.title || 'ChatGPT Import', nachrichten })
-      }
+      if (nachrichten.length > 0) chats[modusId].push({ id: conv.id || Date.now().toString(), modusId, ts: Date.now(), titel: conv.title || 'ChatGPT Import', nachrichten })
     })
     return chats
   } catch { return null }
 }
 
 function importClueJson(data) {
-  try {
-    const parsed = JSON.parse(data)
-    if (typeof parsed === 'object' && !Array.isArray(parsed)) return parsed
-    return null
-  } catch { return null }
+  try { const parsed = JSON.parse(data); if (typeof parsed === 'object' && !Array.isArray(parsed)) return parsed; return null } catch { return null }
 }
 
 function importTxt(data, filename) {
@@ -313,20 +456,20 @@ function SettingsModal({ isOpen, onClose, user, settings, onSettingsChange, chat
   const totalChats = Object.values(chats).flat().length
 
   const tabs = [
-    { id: 'profil',             label: 'Profil',              icon: User },
-    { id: 'personalisierung',   label: 'Personalisierung',    icon: Palette },
-    { id: 'modell',             label: 'KI & Modell',         icon: Cpu },
-    { id: 'systemprompts',      label: 'Systemprompts',       icon: Sliders },
-    { id: 'schnellantworten',   label: 'Vorlagen',            icon: Zap },
-    { id: 'suche',              label: 'Chat-Suche',          icon: Search },
-    { id: 'import',             label: 'Import & Export',     icon: Upload },
-    { id: 'integrationen',      label: 'Verbindungen',        icon: PlugZap },
-    { id: 'passwort',           label: 'Passwort',            icon: Key },
-    { id: 'benachrichtigungen', label: 'Benachrichtigungen',  icon: Bell },
-    { id: 'sprache',            label: 'Sprache',             icon: Globe },
-    { id: 'datenschutz',        label: 'Datenschutz',         icon: Shield },
-    { id: 'shortcuts',          label: 'Tastenkürzel',        icon: Keyboard },
-    { id: 'ueber',              label: 'Über Clue',           icon: Info },
+    { id: 'profil',             label: 'Profil',             icon: User },
+    { id: 'personalisierung',   label: 'Personalisierung',   icon: Palette },
+    { id: 'modell',             label: 'KI & Modell',        icon: Cpu },
+    { id: 'systemprompts',      label: 'Systemprompts',      icon: Sliders },
+    { id: 'schnellantworten',   label: 'Vorlagen',           icon: Zap },
+    { id: 'suche',              label: 'Chat-Suche',         icon: Search },
+    { id: 'import',             label: 'Import & Export',    icon: Upload },
+    { id: 'integrationen',      label: 'Verbindungen',       icon: PlugZap },
+    { id: 'passwort',           label: 'Passwort',           icon: Key },
+    { id: 'benachrichtigungen', label: 'Benachrichtigungen', icon: Bell },
+    { id: 'sprache',            label: 'Sprache',            icon: Globe },
+    { id: 'datenschutz',        label: 'Datenschutz',        icon: Shield },
+    { id: 'shortcuts',          label: 'Tastenkürzel',       icon: Keyboard },
+    { id: 'ueber',              label: 'Über Clue',          icon: Info },
   ]
 
   if (!isOpen) return null
@@ -356,19 +499,13 @@ function SettingsModal({ isOpen, onClose, user, settings, onSettingsChange, chat
         <main className="settings-content">
           <button className="settings-close" onClick={onClose}><X size={16} /></button>
 
-          {/* PROFIL */}
           {aktiveTab === 'profil' && (
             <div className="settings-section">
               <h2 className="settings-title">Profil</h2>
               <p className="settings-subtitle">Deine persönlichen Informationen</p>
               <div className="profile-card">
-                <div className="profile-avatar-big" style={{ background: settings.avatarColor }}>
-                  {(displayName || user?.name || 'U')[0].toUpperCase()}
-                </div>
-                <div className="profile-info">
-                  <div className="profile-name">{displayName || user?.name}</div>
-                  <div className="profile-email">{user?.email || '—'}</div>
-                </div>
+                <div className="profile-avatar-big" style={{ background: settings.avatarColor }}>{(displayName || user?.name || 'U')[0].toUpperCase()}</div>
+                <div className="profile-info"><div className="profile-name">{displayName || user?.name}</div><div className="profile-email">{user?.email || '—'}</div></div>
               </div>
               <div className="settings-group">
                 <div className="settings-group-label">Anzeigename</div>
@@ -388,7 +525,6 @@ function SettingsModal({ isOpen, onClose, user, settings, onSettingsChange, chat
             </div>
           )}
 
-          {/* PERSONALISIERUNG */}
           {aktiveTab === 'personalisierung' && (
             <div className="settings-section">
               <h2 className="settings-title">Personalisierung</h2>
@@ -416,7 +552,6 @@ function SettingsModal({ isOpen, onClose, user, settings, onSettingsChange, chat
             </div>
           )}
 
-          {/* MODELL */}
           {aktiveTab === 'modell' && (
             <div className="settings-section">
               <h2 className="settings-title">KI & Modell</h2>
@@ -426,10 +561,7 @@ function SettingsModal({ isOpen, onClose, user, settings, onSettingsChange, chat
                 <div className="model-list">
                   {MODELLE.map(m => (
                     <button key={m.id} className={`model-card ${settings.model === m.id ? 'aktiv' : ''}`} onClick={() => update('model', m.id)}>
-                      <div className="model-card-left">
-                        <Cpu size={15} strokeWidth={1.8} />
-                        <div><div className="model-name">{m.label}</div><div className="model-desc">{m.desc}</div></div>
-                      </div>
+                      <div className="model-card-left"><Cpu size={15} strokeWidth={1.8} /><div><div className="model-name">{m.label}</div><div className="model-desc">{m.desc}</div></div></div>
                       {settings.model === m.id && <Check size={14} className="model-check" />}
                     </button>
                   ))}
@@ -455,7 +587,6 @@ function SettingsModal({ isOpen, onClose, user, settings, onSettingsChange, chat
             </div>
           )}
 
-          {/* SYSTEMPROMPTS */}
           {aktiveTab === 'systemprompts' && (
             <div className="settings-section">
               <h2 className="settings-title">Systemprompts</h2>
@@ -475,7 +606,6 @@ function SettingsModal({ isOpen, onClose, user, settings, onSettingsChange, chat
             </div>
           )}
 
-          {/* VORLAGEN */}
           {aktiveTab === 'schnellantworten' && (
             <div className="settings-section">
               <h2 className="settings-title">Vorlagen</h2>
@@ -507,7 +637,6 @@ function SettingsModal({ isOpen, onClose, user, settings, onSettingsChange, chat
             </div>
           )}
 
-          {/* CHAT SUCHE */}
           {aktiveTab === 'suche' && (
             <div className="settings-section">
               <h2 className="settings-title">Chat-Suche</h2>
@@ -546,7 +675,6 @@ function SettingsModal({ isOpen, onClose, user, settings, onSettingsChange, chat
             </div>
           )}
 
-          {/* IMPORT & EXPORT */}
           {aktiveTab === 'import' && (
             <div className="settings-section">
               <h2 className="settings-title">Import & Export</h2>
@@ -588,7 +716,6 @@ function SettingsModal({ isOpen, onClose, user, settings, onSettingsChange, chat
             </div>
           )}
 
-          {/* INTEGRATIONEN */}
           {aktiveTab === 'integrationen' && (
             <div className="settings-section">
               <h2 className="settings-title">Verbindungen</h2>
@@ -605,14 +732,9 @@ function SettingsModal({ isOpen, onClose, user, settings, onSettingsChange, chat
                   )
                 })}
               </div>
-              <div className="settings-group">
-                <div className="settings-group-label">Info</div>
-                <div style={{ padding: '14px 16px' }}><p className="settings-hint" style={{ padding: 0 }}>Weitere Integrationen wie Google Drive, Linear, Jira und mehr sind in Entwicklung.</p></div>
-              </div>
             </div>
           )}
 
-          {/* PASSWORT */}
           {aktiveTab === 'passwort' && (
             <div className="settings-section">
               <h2 className="settings-title">Passwort ändern</h2>
@@ -647,7 +769,6 @@ function SettingsModal({ isOpen, onClose, user, settings, onSettingsChange, chat
             </div>
           )}
 
-          {/* BENACHRICHTIGUNGEN */}
           {aktiveTab === 'benachrichtigungen' && (
             <div className="settings-section">
               <h2 className="settings-title">Benachrichtigungen</h2>
@@ -661,14 +782,9 @@ function SettingsModal({ isOpen, onClose, user, settings, onSettingsChange, chat
                 <SettingsRow label="Antwort-Benachrichtigung"><Toggle value={settings.notifications?.chatResponse ?? true} onChange={v => update('notifications', { ...settings.notifications, chatResponse: v })} /></SettingsRow>
                 <SettingsRow label="Mentions & Hinweise"><Toggle value={settings.notifications?.mentions ?? true} onChange={v => update('notifications', { ...settings.notifications, mentions: v })} /></SettingsRow>
               </div>
-              <div className="settings-group">
-                <div className="settings-group-label">Info</div>
-                <div style={{ padding: '12px 16px' }}><p className="settings-hint" style={{ padding: 0 }}>Browser-Push-Benachrichtigungen kommen in einer zukünftigen Version.</p></div>
-              </div>
             </div>
           )}
 
-          {/* SPRACHE */}
           {aktiveTab === 'sprache' && (
             <div className="settings-section">
               <h2 className="settings-title">Sprache & Stimme</h2>
@@ -682,7 +798,6 @@ function SettingsModal({ isOpen, onClose, user, settings, onSettingsChange, chat
                     <option value="en-GB">Englisch (UK)</option>
                     <option value="fr-FR">Französisch</option>
                     <option value="es-ES">Spanisch</option>
-                    <option value="it-IT">Italienisch</option>
                     <option value="tr-TR">Türkisch</option>
                     <option value="ar-SA">Arabisch</option>
                   </select>
@@ -693,15 +808,14 @@ function SettingsModal({ isOpen, onClose, user, settings, onSettingsChange, chat
                 <SettingsRow label="Bevorzugte Sprache">
                   <select className="settings-select" value={settings.responseLang} onChange={e => update('responseLang', e.target.value)}>
                     <option>Deutsch</option><option>Englisch</option><option>Französisch</option>
-                    <option>Spanisch</option><option>Italienisch</option><option>Türkisch</option>
-                    <option>Arabisch</option><option>Wie die Eingabe</option>
+                    <option>Spanisch</option><option>Türkisch</option><option>Arabisch</option>
+                    <option>Wie die Eingabe</option>
                   </select>
                 </SettingsRow>
               </div>
             </div>
           )}
 
-          {/* DATENSCHUTZ */}
           {aktiveTab === 'datenschutz' && (
             <div className="settings-section">
               <h2 className="settings-title">Datenschutz & Daten</h2>
@@ -728,7 +842,7 @@ function SettingsModal({ isOpen, onClose, user, settings, onSettingsChange, chat
                 <div className="settings-group-label">Datenspeicherung</div>
                 <div className="privacy-info">
                   <div className="privacy-item"><Check size={13} style={{ color: '#4ade80' }} /> Chats lokal im Browser gespeichert</div>
-                  <div className="privacy-item"><Check size={13} style={{ color: '#4ade80' }} /> KI-Anfragen über Groq API (verschlüsselt)</div>
+                  <div className="privacy-item"><Check size={13} style={{ color: '#4ade80' }} /> KI-Anfragen verschlüsselt über Groq</div>
                   <div className="privacy-item"><Check size={13} style={{ color: '#4ade80' }} /> Supabase speichert nur Login-Daten</div>
                   <div className="privacy-item"><Check size={13} style={{ color: '#4ade80' }} /> Keine Weitergabe an Dritte</div>
                 </div>
@@ -736,7 +850,6 @@ function SettingsModal({ isOpen, onClose, user, settings, onSettingsChange, chat
             </div>
           )}
 
-          {/* SHORTCUTS */}
           {aktiveTab === 'shortcuts' && (
             <div className="settings-section">
               <h2 className="settings-title">Tastenkürzel</h2>
@@ -744,7 +857,7 @@ function SettingsModal({ isOpen, onClose, user, settings, onSettingsChange, chat
               {[
                 { label: 'Chat', items: [['Enter', 'Nachricht senden'], ['Shift + Enter', 'Neue Zeile']] },
                 { label: 'Navigation', items: [['Cmd + K', 'Neuer Chat'], ['Cmd + ,', 'Einstellungen öffnen'], ['Esc', 'Schließen']] },
-                { label: 'Features', items: [['Cmd + Shift + G', 'Google-Suche ein/aus'], ['Cmd + Shift + M', 'Mikrofon ein/aus'], ['Cmd + Shift + T', 'Theme wechseln']] },
+                { label: 'Features', items: [['Cmd + Shift + G', 'Google-Suche ein/aus'], ['Cmd + Shift + T', 'Theme wechseln']] },
               ].map(g => (
                 <div key={g.label} className="settings-group">
                   <div className="settings-group-label">{g.label}</div>
@@ -756,7 +869,6 @@ function SettingsModal({ isOpen, onClose, user, settings, onSettingsChange, chat
             </div>
           )}
 
-          {/* ÜBER */}
           {aktiveTab === 'ueber' && (
             <div className="settings-section">
               <h2 className="settings-title">Über Clue</h2>
@@ -989,32 +1101,17 @@ function ChatApp({ user, onLogout }) {
       const updated = (prev[modusId] || []).map(c => c.id !== chatId ? c : { ...c, nachrichten: [...c.nachrichten, kiNachricht] })
       return { ...prev, [modusId]: updated }
     })
-
     try {
       const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_GROQ_KEY}`,
-        },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${import.meta.env.VITE_GROQ_KEY}` },
         body: JSON.stringify({
-          model: settings.model,
-          max_tokens: settings.maxTokens,
-          temperature: settings.temperature,
-          stream: false,
-          messages: [
-            { role: 'system', content: systemPrompt },
-            ...messages.map(m => ({ role: m.rolle === 'user' ? 'user' : 'assistant', content: m.text })),
-          ],
+          model: settings.model, max_tokens: settings.maxTokens, temperature: settings.temperature, stream: false,
+          messages: [{ role: 'system', content: systemPrompt }, ...messages.map(m => ({ role: m.rolle === 'user' ? 'user' : 'assistant', content: m.text }))],
         }),
       })
-
       const data = await res.json()
-
-      if (data.error) {
-        throw new Error(data.error.message || 'Groq API Fehler')
-      }
-
+      if (data.error) throw new Error(data.error.message || 'Groq API Fehler')
       const text = data.choices?.[0]?.message?.content || ''
       setChats(prev => {
         const updated = (prev[modusId] || []).map(c => {
@@ -1025,7 +1122,6 @@ function ChatApp({ user, onLogout }) {
         })
         const next = { ...prev, [modusId]: updated }; speichereChats(next); return next
       })
-
     } catch (fehler) {
       setChats(prev => {
         const updated = (prev[modusId] || []).map(c => {
@@ -1268,6 +1364,9 @@ function ChatApp({ user, onLogout }) {
 // ─── ROOT ─────────────────────────────────────────────────────────────────────
 export default function App() {
   const [user, setUser] = useState(null)
+  const [onboardingDone, setOnboardingDone] = useState(
+    () => !!localStorage.getItem('clue-onboarding-done')
+  )
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -1281,6 +1380,7 @@ export default function App() {
 
   async function onLogout() { await supabase.auth.signOut(); setUser(null) }
 
+  if (!onboardingDone) return <Onboarding onFinish={() => setOnboardingDone(true)} />
   if (!user) return <LoginScreen onLogin={setUser} />
   return <ChatApp user={user} onLogout={onLogout} />
 }
