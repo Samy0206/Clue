@@ -7,11 +7,11 @@ import {
   Download, LogOut, Sliders, Save, AlertTriangle, RefreshCw,
   Upload, Search, Bell, Key, Zap, BookOpen, Hash, CheckSquare,
   PlugZap, ArrowRight, PanelLeftClose, PanelLeftOpen, Link,
-  ExternalLink, Chrome, Smartphone, Monitor, ChevronDown,
-  LayoutDashboard
+  ExternalLink, ChevronDown
 } from 'lucide-react'
 import { supabase } from './supabase'
 
+// ─── KONSTANTEN ───────────────────────────────────────────────────────────────
 const MODI = [
   { id: 'chat',  label: 'Chat',      icon: MessageCircle, defaultSystem: 'Du bist Clue, ein persönlicher KI-Assistent. Antworte immer auf Deutsch, klar und freundlich.', suggestions: ['Was kannst du alles?', 'Erkläre mir KI einfach', 'Schreib mir eine Geschichte'] },
   { id: 'docs',  label: 'Dokumente', icon: FileText,      defaultSystem: 'Du bist Clue, ein Experte für Dokumentenanalyse. Analysiere Dokumente präzise. Antworte auf Deutsch.', suggestions: ['Fasse diesen Text zusammen', 'Extrahiere die Kernpunkte', 'Erstelle eine Gliederung'] },
@@ -28,16 +28,55 @@ const MODELLE = [
   { id: 'deepseek-r1-distill-llama-70b', label: 'DeepSeek R1',    desc: 'Stark bei Mathe & Code' },
 ]
 
-const INTEGRATIONEN = [
-  { id: 'google_cal', label: 'Google Kalender', icon: Calendar,    color: '#4285F4', desc: 'Termine lesen & erstellen', connectUrl: 'https://calendar.google.com', status: 'bald' },
-  { id: 'apple_cal',  label: 'Apple Kalender',  icon: Calendar,    color: '#000000', desc: 'iCloud Termine',            connectUrl: '', status: 'bald' },
-  { id: 'notion',     label: 'Notion',           icon: BookOpen,    color: '#000000', desc: 'Seiten & Datenbanken',      connectUrl: 'https://notion.so', status: 'bald' },
-  { id: 'github',     label: 'GitHub',           icon: Code2,       color: '#333333', desc: 'Repos & Issues',            connectUrl: 'https://github.com', status: 'bald' },
-  { id: 'slack',      label: 'Slack',            icon: Hash,        color: '#4A154B', desc: 'Nachrichten & Kanäle',      connectUrl: 'https://slack.com', status: 'bald' },
-  { id: 'todoist',    label: 'Todoist',          icon: CheckSquare, color: '#DB4035', desc: 'Aufgaben synchronisieren',  connectUrl: 'https://todoist.com', status: 'bald' },
-  { id: 'obsidian',   label: 'Obsidian',         icon: FileText,    color: '#7C3AED', desc: 'Notizen & Wissensbase',     connectUrl: 'https://obsidian.md', status: 'bald' },
-  { id: 'chrome',     label: 'Chrome Extension', icon: Globe,       color: '#4285F4', desc: 'Browser-Integration',       connectUrl: '', status: 'bald' },
-]
+const VERBINDUNGEN_CONFIG = {
+  google_cal: {
+    label: 'Google Kalender', desc: 'Termine lesen & erstellen',
+    icon: Calendar, color: '#4285F4',
+    features: ['Termine anzeigen', 'Neue Termine erstellen', 'Erinnerungen'],
+  },
+  notion: {
+    label: 'Notion', desc: 'Seiten & Datenbanken lesen',
+    icon: BookOpen, color: '#ffffff',
+    features: ['Seiten durchsuchen', 'Inhalte zusammenfassen', 'Datenbanken abfragen'],
+    comingSoon: true,
+  },
+  github: {
+    label: 'GitHub', desc: 'Repos & Issues verwalten',
+    icon: Code2, color: '#f0f6fc',
+    features: ['Repos durchsuchen', 'Issues lesen', 'Code analysieren'],
+    comingSoon: true,
+  },
+  slack: {
+    label: 'Slack', desc: 'Nachrichten & Kanäle',
+    icon: Hash, color: '#4A154B',
+    features: ['Nachrichten lesen', 'Kanäle durchsuchen', 'Zusammenfassungen'],
+    comingSoon: true,
+  },
+  todoist: {
+    label: 'Todoist', desc: 'Aufgaben synchronisieren',
+    icon: CheckSquare, color: '#DB4035',
+    features: ['Aufgaben anzeigen', 'Neue Aufgaben erstellen', 'Projekte verwalten'],
+    comingSoon: true,
+  },
+  obsidian: {
+    label: 'Obsidian', desc: 'Notizen & Wissensbase',
+    icon: FileText, color: '#7C3AED',
+    features: ['Notizen durchsuchen', 'Inhalte analysieren', 'Verlinkungen finden'],
+    comingSoon: true,
+  },
+  google_drive: {
+    label: 'Google Drive', desc: 'Dateien & Dokumente',
+    icon: Upload, color: '#0F9D58',
+    features: ['Dateien durchsuchen', 'Dokumente lesen', 'Zusammenfassungen'],
+    comingSoon: true,
+  },
+  chrome: {
+    label: 'Chrome Extension', desc: 'Browser-Integration',
+    icon: Globe, color: '#4285F4',
+    features: ['Aktive Seite analysieren', 'Text markieren & fragen', 'Tab-Verlauf'],
+    comingSoon: true,
+  },
+}
 
 const DEFAULT_SETTINGS = {
   theme: 'dark', fontSize: 'medium', messageSpacing: 'comfortable',
@@ -54,11 +93,14 @@ const DEFAULT_SETTINGS = {
   ],
 }
 
+// ─── STORAGE ──────────────────────────────────────────────────────────────────
 function ladeChats() { try { return JSON.parse(localStorage.getItem('clue-chats') || '{}') } catch { return {} } }
 function speichereChats(c) { localStorage.setItem('clue-chats', JSON.stringify(c)) }
 function ladeSettings() { try { return { ...DEFAULT_SETTINGS, ...JSON.parse(localStorage.getItem('clue-settings') || '{}') } } catch { return DEFAULT_SETTINGS } }
 function speichereSettings(s) { localStorage.setItem('clue-settings', JSON.stringify(s)) }
 function neuerChat(modusId) { return { id: Date.now().toString(), modusId, titel: 'Neuer Chat', nachrichten: [], ts: Date.now() } }
+function ladeVerbindungen() { try { return JSON.parse(localStorage.getItem('clue-verbindungen') || '{}') } catch { return {} } }
+function speichereVerbindungen(v) { localStorage.setItem('clue-verbindungen', JSON.stringify(v)) }
 
 // ─── ONBOARDING ───────────────────────────────────────────────────────────────
 const OB_SLIDES = [
@@ -169,9 +211,7 @@ function LoadingAnimation() {
     <div className="loading-anim">
       <div className="infinity-container">
         <svg viewBox="0 0 100 50" width="72" height="36" fill="none" className="infinity-svg">
-          <path className="infinity-path"
-            d="M50,25 C50,11 35,5 25,11 C15,17 15,33 25,39 C35,45 50,39 50,25 C50,11 65,5 75,11 C85,17 85,33 75,39 C65,45 50,39 50,25"
-          />
+          <path className="infinity-path" d="M50,25 C50,11 35,5 25,11 C15,17 15,33 25,39 C35,45 50,39 50,25 C50,11 65,5 75,11 C85,17 85,33 75,39 C65,45 50,39 50,25" />
         </svg>
         <div className="infinity-glow" />
       </div>
@@ -235,7 +275,7 @@ function Markdown({ text }) {
   return <div className="markdown">{elements}</div>
 }
 
-// ─── WEB SUCHE MIT VORSCHAU ───────────────────────────────────────────────────
+// ─── WEB SUCHE ────────────────────────────────────────────────────────────────
 async function webSuche(query) {
   try {
     const key = import.meta.env.VITE_GOOGLE_SEARCH_KEY
@@ -243,10 +283,8 @@ async function webSuche(query) {
     const res = await fetch(`https://www.googleapis.com/customsearch/v1?key=${key}&cx=${cx}&q=${encodeURIComponent(query)}&num=4`)
     const data = await res.json()
     return (data.items || []).map(r => ({
-      title: r.title,
-      snippet: r.snippet,
-      url: r.link,
-      domain: new URL(r.link).hostname.replace('www.', ''),
+      title: r.title, snippet: r.snippet, url: r.link,
+      domain: (() => { try { return new URL(r.link).hostname.replace('www.', '') } catch { return r.link } })(),
       favicon: `https://www.google.com/s2/favicons?domain=${r.link}&sz=32`,
       image: r.pagemap?.cse_thumbnail?.[0]?.src || r.pagemap?.cse_image?.[0]?.src || null,
     }))
@@ -264,10 +302,10 @@ function SearchResults({ quellen, query }) {
       <div className="search-cards">
         {quellen.map((q, i) => (
           <a key={i} href={q.url} target="_blank" rel="noreferrer" className="search-card glass-card">
-            {q.image && <div className="search-card-img"><img src={q.image} alt={q.title} onError={e => e.target.style.display='none'} /></div>}
+            {q.image && <div className="search-card-img"><img src={q.image} alt={q.title} onError={e => e.target.style.display = 'none'} /></div>}
             <div className="search-card-body">
               <div className="search-card-source">
-                <img src={q.favicon} alt="" className="search-favicon" onError={e => e.target.style.display='none'} />
+                <img src={q.favicon} alt="" className="search-favicon" onError={e => e.target.style.display = 'none'} />
                 <span className="search-domain">{q.domain}</span>
                 <ExternalLink size={10} strokeWidth={2} />
               </div>
@@ -292,7 +330,7 @@ function dateiLesen(file) {
   })
 }
 
-// ─── SETTINGS COMPONENTS ─────────────────────────────────────────────────────
+// ─── SETTINGS HELPERS ─────────────────────────────────────────────────────────
 function Toggle({ value, onChange }) {
   return <button className={`toggle ${value ? 'on' : ''}`} onClick={() => onChange(!value)}><span className="toggle-knob" /></button>
 }
@@ -335,24 +373,200 @@ function importTxt(data, filename) {
   return { chat: [{ id: Date.now().toString(), modusId: 'chat', ts: Date.now(), titel: filename.replace(/\.(txt|md)$/, ''), nachrichten }] }
 }
 
+// ─── VERBINDUNGEN TAB ─────────────────────────────────────────────────────────
+function VerbindungenTab() {
+  const [verbindungen, setVerbindungen] = useState(ladeVerbindungen)
+  const [aktiveVerbindung, setAktiveVerbindung] = useState(null)
+  const [verbindeStatus, setVerbindeStatus] = useState({})
+  const [kalenderDaten, setKalenderDaten] = useState(null)
+
+  function toggleDetail(id) { setAktiveVerbindung(aktiveVerbindung === id ? null : id) }
+
+  async function verbinden(id) {
+    const config = VERBINDUNGEN_CONFIG[id]
+    if (!config) return
+    setVerbindeStatus(p => ({ ...p, [id]: 'connecting' }))
+    if (id === 'google_cal') {
+      const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
+      if (!clientId) {
+        alert('VITE_GOOGLE_CLIENT_ID fehlt!\n\nFüge in Vercel → Settings → Environment Variables hinzu:\nVITE_GOOGLE_CLIENT_ID=xxx.apps.googleusercontent.com')
+        setVerbindeStatus(p => ({ ...p, [id]: null })); return
+      }
+      const params = new URLSearchParams({
+        client_id: clientId, redirect_uri: window.location.origin,
+        response_type: 'token', scope: 'https://www.googleapis.com/auth/calendar.readonly',
+        include_granted_scopes: 'true',
+      })
+      const popup = window.open(`https://accounts.google.com/o/oauth2/v2/auth?${params}`, 'google-oauth', 'width=500,height=600,left=200,top=100')
+      const check = setInterval(() => {
+        try {
+          if (popup.closed) { clearInterval(check); setVerbindeStatus(p => ({ ...p, [id]: null })); return }
+          const url = popup.location.href
+          if (url.includes(window.location.origin) && url.includes('access_token')) {
+            const token = new URLSearchParams(url.split('#')[1]).get('access_token')
+            if (token) {
+              clearInterval(check); popup.close()
+              const next = { ...verbindungen, [id]: { token, ts: Date.now() } }
+              setVerbindungen(next); speichereVerbindungen(next)
+              setVerbindeStatus(p => ({ ...p, [id]: null }))
+              ladeKalender(token)
+            }
+          }
+        } catch {}
+      }, 500)
+    } else if (config.comingSoon) {
+      setTimeout(() => setVerbindeStatus(p => ({ ...p, [id]: null })), 800)
+    }
+  }
+
+  function trennen(id) {
+    const next = { ...verbindungen }; delete next[id]
+    setVerbindungen(next); speichereVerbindungen(next)
+    if (id === 'google_cal') setKalenderDaten(null)
+  }
+
+  async function ladeKalender(token) {
+    try {
+      const heute = new Date().toISOString()
+      const inZweiWochen = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
+      const res = await fetch(
+        `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${heute}&timeMax=${inZweiWochen}&maxResults=5&orderBy=startTime&singleEvents=true`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      const data = await res.json()
+      setKalenderDaten(data.items || [])
+    } catch { setKalenderDaten([]) }
+  }
+
+  useEffect(() => {
+    if (verbindungen.google_cal?.token && !kalenderDaten) ladeKalender(verbindungen.google_cal.token)
+  }, [])
+
+  return (
+    <div className="settings-section">
+      <h2 className="settings-title">Verbindungen</h2>
+      <p className="settings-subtitle">Verbinde Clue mit deinen Apps und Diensten</p>
+
+      {Object.keys(verbindungen).length > 0 && (
+        <div className="settings-group">
+          <div className="settings-group-label" style={{ color: '#4ade80' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Check size={11} strokeWidth={2.5} /> Verbunden
+            </span>
+          </div>
+          {Object.keys(verbindungen).map(id => {
+            const config = VERBINDUNGEN_CONFIG[id]; if (!config) return null
+            const Icon = config.icon
+            return (
+              <div key={id}>
+                <div className="integration-item" style={{ cursor: 'pointer' }} onClick={() => toggleDetail(id)}>
+                  <div className="integration-left">
+                    <div className="integration-icon connected-icon" style={{ background: config.color + '20', borderColor: config.color + '40' }}>
+                      <Icon size={16} strokeWidth={1.8} style={{ color: config.color }} />
+                    </div>
+                    <div>
+                      <div className="integration-name">{config.label}</div>
+                      <div className="integration-desc">
+                        Verbunden {verbindungen[id].ts && '· ' + new Date(verbindungen[id].ts).toLocaleDateString('de-DE')}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span className="integration-btn connected"><Check size={12} /> Aktiv</span>
+                    <ChevronDown size={14} style={{ color: 'var(--text-muted)', transform: aktiveVerbindung === id ? 'rotate(180deg)' : '', transition: 'transform .2s' }} />
+                  </div>
+                </div>
+                {aktiveVerbindung === id && (
+                  <div className="verbindung-detail">
+                    {id === 'google_cal' && (
+                      <div className="kalender-vorschau">
+                        <div className="kalender-header"><Calendar size={13} strokeWidth={2} /><span>Nächste Termine</span></div>
+                        {!kalenderDaten && <div className="kalender-loading"><div className="kalender-loading-dot" /><div className="kalender-loading-dot" style={{ animationDelay: '.15s' }} /><div className="kalender-loading-dot" style={{ animationDelay: '.3s' }} /></div>}
+                        {kalenderDaten?.length === 0 && <div style={{ fontSize: 12.5, color: 'var(--text-muted)', padding: '8px 0' }}>Keine bevorstehenden Termine.</div>}
+                        {kalenderDaten?.map((event, i) => {
+                          const start = event.start?.dateTime || event.start?.date
+                          const datum = start ? new Date(start) : null
+                          return (
+                            <div key={i} className="kalender-event">
+                              <div className="kalender-event-dot" />
+                              <div>
+                                <div className="kalender-event-titel">{event.summary}</div>
+                                {datum && <div className="kalender-event-zeit">{datum.toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'short' })}{event.start?.dateTime && ' · ' + datum.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}</div>}
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                    <button className="verbindung-trennen-btn" onClick={() => trennen(id)}><X size={12} /> Verbindung trennen</button>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      <div className="settings-group">
+        <div className="settings-group-label">Alle Dienste</div>
+        {Object.entries(VERBINDUNGEN_CONFIG).map(([id, config]) => {
+          const Icon = config.icon
+          const isConnected = !!verbindungen[id]
+          const isConnecting = verbindeStatus[id] === 'connecting'
+          if (isConnected) return null
+          return (
+            <div key={id} className="integration-item">
+              <div className="integration-left">
+                <div className="integration-icon" style={{ background: config.color + '15', borderColor: config.color + '25' }}>
+                  <Icon size={16} strokeWidth={1.8} style={{ color: config.color }} />
+                </div>
+                <div>
+                  <div className="integration-name">{config.label}</div>
+                  <div className="integration-desc">{config.desc}</div>
+                  <div className="integration-features">
+                    {config.features?.slice(0, 2).map((f, i) => <span key={i} className="integration-feature-tag">{f}</span>)}
+                  </div>
+                </div>
+              </div>
+              <div className="integration-right">
+                {config.comingSoon ? (
+                  <span className="coming-soon-badge">Bald</span>
+                ) : (
+                  <button className={`integration-connect-btn ${isConnecting ? 'connecting' : ''}`} onClick={() => verbinden(id)} disabled={isConnecting}>
+                    {isConnecting ? <><div className="connect-spinner" /> Verbinde...</> : <><Link size={12} /> Verbinden</>}
+                  </button>
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      <div className="settings-group">
+        <div className="settings-group-label">Setup</div>
+        <div style={{ padding: '12px 16px' }}>
+          <p className="settings-hint" style={{ padding: 0 }}>
+            Für Google Kalender: Füge <code style={{ fontSize: 11, background: 'var(--surface3)', padding: '1px 6px', borderRadius: 5 }}>VITE_GOOGLE_CLIENT_ID</code> in Vercel → Environment Variables hinzu.
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── SETTINGS MODAL ───────────────────────────────────────────────────────────
 function SettingsModal({ isOpen, onClose, user, settings, onSettingsChange, chats, setChats, onLogout }) {
   const [aktiveTab, setAktiveTab] = useState('profil')
   const [savedFlash, setSavedFlash] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState(false)
   const [displayName, setDisplayName] = useState(settings.displayName || user?.name || '')
-  const [pwNeu, setPwNeu] = useState('')
-  const [pwBestaetigung, setPwBestaetigung] = useState('')
-  const [pwFehler, setPwFehler] = useState('')
-  const [pwErfolg, setPwErfolg] = useState(false)
+  const [pwNeu, setPwNeu] = useState(''); const [pwBestaetigung, setPwBestaetigung] = useState('')
+  const [pwFehler, setPwFehler] = useState(''); const [pwErfolg, setPwErfolg] = useState(false)
   const [showPwNeu, setShowPwNeu] = useState(false)
-  const [importStatus, setImportStatus] = useState(null)
-  const [importVorschau, setImportVorschau] = useState(null)
+  const [importStatus, setImportStatus] = useState(null); const [importVorschau, setImportVorschau] = useState(null)
   const importInputRef = useRef(null)
   const [suchbegriff, setSuchbegriff] = useState('')
-  const [neueAntwort, setNeueAntwort] = useState({ titel: '', text: '' })
-  const [editId, setEditId] = useState(null)
-  const [verbindungen, setVerbindungen] = useState(() => { try { return JSON.parse(localStorage.getItem('clue-verbindungen') || '{}') } catch { return {} } })
+  const [neueAntwort, setNeueAntwort] = useState({ titel: '', text: '' }); const [editId, setEditId] = useState(null)
 
   function update(key, val) { onSettingsChange(prev => { const next = { ...prev, [key]: val }; speichereSettings(next); return next }); setSavedFlash(true); setTimeout(() => setSavedFlash(false), 1200) }
   function updateSystemPrompt(modusId, val) { onSettingsChange(prev => { const next = { ...prev, systemPrompts: { ...prev.systemPrompts, [modusId]: val } }; speichereSettings(next); return next }) }
@@ -389,11 +603,6 @@ function SettingsModal({ isOpen, onClose, user, settings, onSettingsChange, chat
     const blob = new Blob([JSON.stringify(chats, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url
     a.download = `clue-export-${new Date().toISOString().slice(0, 10)}.json`; a.click(); URL.revokeObjectURL(url)
-  }
-
-  function toggleVerbindung(id) {
-    const next = { ...verbindungen, [id]: !verbindungen[id] }
-    setVerbindungen(next); localStorage.setItem('clue-verbindungen', JSON.stringify(next))
   }
 
   const suchergebnisse = suchbegriff.trim().length > 1
@@ -610,7 +819,7 @@ function SettingsModal({ isOpen, onClose, user, settings, onSettingsChange, chat
                 <div className="settings-group-label">Chat importieren</div>
                 <div style={{padding:'14px 16px',display:'flex',flexDirection:'column',gap:12}}>
                   <div className="import-format-list">
-                    {[{label:'Clue JSON',desc:'Eigener Export'},{label:'ChatGPT Export',desc:'conversations.json'},{label:'Textdatei',desc:'.txt Zeilenweise'},{label:'Markdown',desc:'.md Formatiert'}].map(f=>(
+                    {[{label:'Clue JSON',desc:'Eigener Export'},{label:'ChatGPT Export',desc:'conversations.json'},{label:'Textdatei',desc:'.txt'},{label:'Markdown',desc:'.md'}].map(f=>(
                       <div key={f.label} className="import-format-item glass-card"><Check size={12} style={{color:'#4ade80'}}/><div><div style={{fontSize:12.5,fontWeight:500,color:'var(--text)'}}>{f.label}</div><div style={{fontSize:11.5,color:'var(--text-muted)'}}>{f.desc}</div></div></div>
                     ))}
                   </div>
@@ -642,46 +851,7 @@ function SettingsModal({ isOpen, onClose, user, settings, onSettingsChange, chat
             </div>
           )}
 
-          {aktiveTab === 'integrationen' && (
-            <div className="settings-section">
-              <h2 className="settings-title">Verbindungen</h2>
-              <p className="settings-subtitle">Verbinde Clue mit externen Diensten</p>
-              <div className="settings-group">
-                <div className="settings-group-label">Verfügbare Dienste</div>
-                {INTEGRATIONEN.map(int => {
-                  const Icon = int.icon; const connected = verbindungen[int.id]
-                  return (
-                    <div key={int.id} className="integration-item">
-                      <div className="integration-left">
-                        <div className="integration-icon" style={{background:int.color+'18',borderColor:int.color+'30'}}>
-                          <Icon size={16} strokeWidth={1.8} style={{color:int.color}} />
-                        </div>
-                        <div>
-                          <div className="integration-name">{int.label}</div>
-                          <div className="integration-desc">{int.desc}</div>
-                        </div>
-                      </div>
-                      <div className="integration-right">
-                        {int.status === 'bald' ? (
-                          <span className="coming-soon-badge">Bald verfügbar</span>
-                        ) : (
-                          <button className={`integration-btn ${connected ? 'connected' : ''}`} onClick={() => toggleVerbindung(int.id)}>
-                            {connected ? <><Check size={12}/> Verbunden</> : <><Link size={12}/> Verbinden</>}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-              <div className="settings-group">
-                <div className="settings-group-label">Info</div>
-                <div style={{padding:'14px 16px'}}>
-                  <p className="settings-hint" style={{padding:0}}>Weitere Integrationen wie Google Drive, Linear, Jira und mehr sind in Entwicklung. Die Verbindungen werden direkt in Clue verfügbar sein.</p>
-                </div>
-              </div>
-            </div>
-          )}
+          {aktiveTab === 'integrationen' && <VerbindungenTab />}
 
           {aktiveTab === 'passwort' && (
             <div className="settings-section">
@@ -966,7 +1136,6 @@ function ChatApp({ user, onLogout }) {
   }, [settings.voiceLang])
 
   function toggleMic() { if (!recognitionRef.current) return; if (hoert) { recognitionRef.current.stop(); setHoert(false) } else { recognitionRef.current.start(); setHoert(true) } }
-
   function autoResize() { const ta=textareaRef.current; if(!ta)return; ta.style.height='auto'; ta.style.height=Math.min(ta.scrollHeight,160)+'px' }
 
   async function dateiAuswaehlen(e) {
@@ -1042,7 +1211,7 @@ function ChatApp({ user, onLogout }) {
     if(webSucheAktiv) {
       searchQuery = frageText
       quellen=await webSuche(frageText)
-      if(quellen.length>0)systemPrompt+=`\n\nAktuelle Internetinfos:\n${quellen.map(q=>`${q.title} (${q.domain}): ${q.snippet}`).join('\n\n')}\n\nBeantworte die Frage basierend auf diesen Infos. Erwähne relevante Quellen natürlich im Text.`
+      if(quellen.length>0)systemPrompt+=`\n\nAktuelle Internetinfos:\n${quellen.map(q=>`${q.title} (${q.domain}): ${q.snippet}`).join('\n\n')}\n\nBeantworte die Frage basierend auf diesen Infos.`
     }
 
     await apiCall(chatId,modusId,aktualisiert,systemPrompt,quellen,searchQuery)
@@ -1062,16 +1231,13 @@ function ChatApp({ user, onLogout }) {
   return (
     <>
       <div className="app">
-        {/* SIDEBAR */}
         <aside className={`sidebar glass-sidebar ${sidebarOffen?'':'sidebar-hidden'}`}>
-          {/* Search */}
           <div className="sidebar-search-wrap">
             <Search size={13} className="sidebar-search-icon" />
             <input className="sidebar-search" placeholder="Chats suchen..." value={sidebarSuche} onChange={e=>setSidebarSuche(e.target.value)} />
             {sidebarSuche && <button className="sidebar-search-clear" onClick={()=>setSidebarSuche('')}><X size={12}/></button>}
           </div>
 
-          {/* Logo */}
           <div className="sidebar-logo-row">
             <div className="logo">Clue</div>
             <button className="icon-btn sidebar-toggle-btn" onClick={()=>setSidebarOffen(false)} title="Sidebar ausblenden (Cmd+B)">
@@ -1079,7 +1245,6 @@ function ChatApp({ user, onLogout }) {
             </button>
           </div>
 
-          {/* Modi */}
           {!sidebarSuche && (
             <div className="sidebar-modi">
               {MODI.map(modus => {
@@ -1095,7 +1260,6 @@ function ChatApp({ user, onLogout }) {
             </div>
           )}
 
-          {/* Chats */}
           <div className="sidebar-chats-label">
             {sidebarSuche ? `${alleChatsSuche.length} Ergebnisse` : 'Letzte Chats'}
           </div>
@@ -1110,7 +1274,6 @@ function ChatApp({ user, onLogout }) {
 
           <div className="sidebar-spacer" />
 
-          {/* Profil */}
           <div className="sidebar-footer" ref={profilRef}>
             <button className="profil-btn" onClick={()=>setProfilMenuOffen(p=>!p)}>
               <div className="user-avatar" style={{background:settings.avatarColor}}>{((settings.displayName||user?.name)||'U')[0].toUpperCase()}</div>
@@ -1138,9 +1301,7 @@ function ChatApp({ user, onLogout }) {
           </div>
         </aside>
 
-        {/* MAIN */}
         <main className="main">
-          {/* Header */}
           <div className="chat-header glass-header">
             <div className="chat-header-left">
               {!sidebarOffen && (
@@ -1157,7 +1318,6 @@ function ChatApp({ user, onLogout }) {
             <button className="new-chat-btn glass-btn" onClick={startNeuerChat}><Plus size={13} strokeWidth={2.5}/> Neuer Chat</button>
           </div>
 
-          {/* Messages */}
           <div className="nachrichten">
             {nachrichten.length===0 && (
               <div className="leer">
@@ -1183,7 +1343,6 @@ function ChatApp({ user, onLogout }) {
             <div ref={bottomRef}/>
           </div>
 
-          {/* Input */}
           <div className="eingabe-container">
             {angehaegteDatei && (
               <div className="datei-preview-bar glass-card">
@@ -1207,7 +1366,6 @@ function ChatApp({ user, onLogout }) {
             )}
 
             <div className="eingabe-box glass-input">
-              {/* Modi Pills */}
               <div className="modi-pills">
                 {MODI.map(modus=>{
                   const Icon=modus.icon; const aktiv=aktiverModusId===modus.id
