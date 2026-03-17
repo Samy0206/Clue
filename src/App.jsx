@@ -16,7 +16,7 @@ const MODI = [
   { id: 'docs',  label: 'Dokumente', icon: FileText,      defaultSystem: 'Du bist Clue, ein Experte für Dokumentenanalyse. Analysiere Dokumente präzise. Antworte auf Deutsch.', suggestions: ['Fasse diesen Text zusammen', 'Extrahiere die Kernpunkte', 'Erstelle eine Gliederung'] },
   { id: 'learn', label: 'Lernen',    icon: GraduationCap, defaultSystem: 'Du bist Clue, ein motivierender Lerncoach. Erkläre Konzepte einfach, stelle Quizfragen. Antworte auf Deutsch.', suggestions: ['Erkläre mir Rekursion', 'Quiz über Datenbanken', 'Was ist Big O Notation?'] },
   { id: 'code',  label: 'Code',      icon: Code2,         defaultSystem: 'Du bist Clue, ein erfahrener Senior-Entwickler. Hilf beim Schreiben und Debuggen von Code. Formatiere Code immer in Codeblöcken mit Sprachangabe.', suggestions: ['Erkläre async/await', 'Was ist ein REST API?', 'Bubble Sort in Python'] },
-  { id: 'cal',   label: 'Termine',   icon: Calendar,      defaultSystem: 'Du bist Clue, ein intelligenter Kalender-Assistent. Du hast Zugriff auf den echten Google Kalender des Nutzers. Beantworte alle Fragen zu Terminen basierend auf den echten Kalenderdaten. Antworte auf Deutsch.', suggestions: ['Was sind meine nächsten Termine?', 'Was habe ich diese Woche?', 'Hilf mir mit Zeitmanagement'] },
+  { id: 'cal',   label: 'Termine',   icon: Calendar,      defaultSystem: 'Du bist Clue, ein intelligenter Kalender-Assistent. Du hast Zugriff auf den echten Google Kalender des Nutzers. Zeige nur echte Termine die dir übergeben werden. Erfinde niemals Termine. Antworte auf Deutsch.', suggestions: ['Was sind meine nächsten Termine?', 'Was habe ich diese Woche?', 'Wann ist mein nächster Termin?'] },
 ]
 
 const MODELLE = [
@@ -390,8 +390,10 @@ function VerbindungenTab() {
         setVerbindeStatus(p => ({ ...p, [id]: null })); return
       }
       const params = new URLSearchParams({
-        client_id: clientId, redirect_uri: window.location.origin,
-        response_type: 'token', scope: 'https://www.googleapis.com/auth/calendar.readonly',
+        client_id: clientId,
+        redirect_uri: window.location.origin,
+        response_type: 'token',
+        scope: 'https://www.googleapis.com/auth/calendar',
         include_granted_scopes: 'true',
       })
       const popup = window.open(`https://accounts.google.com/o/oauth2/v2/auth?${params}`, 'google-oauth', 'width=500,height=600,left=200,top=100')
@@ -1222,10 +1224,12 @@ function ChatApp({ user, onLogout }) {
             const zeitStr = e.start?.dateTime ? datum.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) + ' Uhr' : 'Ganztägig'
             return `- ${e.summary || 'Kein Titel'}: ${datumStr} um ${zeitStr}${e.location ? ' | Ort: ' + e.location : ''}${e.description ? ' | Info: ' + e.description.slice(0, 100) : ''}`
           }).join('\n')
-          systemPrompt += `\n\nAktuelle Kalender-Daten des Nutzers (Google Kalender, nächste 30 Tage):\n${termine}\n\nDu hast Zugriff auf diese echten Termine. Beantworte alle Fragen direkt basierend auf diesen Daten. Heute ist ${new Date().toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}.`
+          systemPrompt += `\n\nAktuelle Kalender-Daten (Google Kalender, nächste 30 Tage):\n${termine}\n\nHeute ist ${new Date().toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}.\n\nWICHTIG: Zeige NUR diese echten Termine. Erfinde KEINE Termine. Du kannst Termine nur ANZEIGEN, nicht erstellen. Wenn der Nutzer einen Termin erstellen möchte, sage ihm er soll Google Kalender direkt öffnen unter calendar.google.com.`
         } else {
-          systemPrompt += `\n\nDer Google Kalender ist verbunden aber es gibt keine Termine in den nächsten 30 Tagen. Teile das dem Nutzer mit.`
+          systemPrompt += `\n\nGoogle Kalender ist verbunden. Es gibt keine Termine in den nächsten 30 Tagen. Teile das dem Nutzer mit und erfinde keine Termine.`
         }
+      } else if (modusId === 'cal' && !token) {
+        systemPrompt += `\n\nKein Google Kalender verbunden. Weise den Nutzer darauf hin, dass er in den Einstellungen unter "Verbindungen" seinen Google Kalender verbinden kann.`
       }
     } catch(e) { console.log('Kalender Fehler:', e) }
 
