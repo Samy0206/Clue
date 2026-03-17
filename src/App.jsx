@@ -11,13 +11,12 @@ import {
 } from 'lucide-react'
 import { supabase } from './supabase'
 
-// ─── KONSTANTEN ───────────────────────────────────────────────────────────────
 const MODI = [
   { id: 'chat',  label: 'Chat',      icon: MessageCircle, defaultSystem: 'Du bist Clue, ein persönlicher KI-Assistent. Antworte immer auf Deutsch, klar und freundlich.', suggestions: ['Was kannst du alles?', 'Erkläre mir KI einfach', 'Schreib mir eine Geschichte'] },
   { id: 'docs',  label: 'Dokumente', icon: FileText,      defaultSystem: 'Du bist Clue, ein Experte für Dokumentenanalyse. Analysiere Dokumente präzise. Antworte auf Deutsch.', suggestions: ['Fasse diesen Text zusammen', 'Extrahiere die Kernpunkte', 'Erstelle eine Gliederung'] },
   { id: 'learn', label: 'Lernen',    icon: GraduationCap, defaultSystem: 'Du bist Clue, ein motivierender Lerncoach. Erkläre Konzepte einfach, stelle Quizfragen. Antworte auf Deutsch.', suggestions: ['Erkläre mir Rekursion', 'Quiz über Datenbanken', 'Was ist Big O Notation?'] },
   { id: 'code',  label: 'Code',      icon: Code2,         defaultSystem: 'Du bist Clue, ein erfahrener Senior-Entwickler. Hilf beim Schreiben und Debuggen von Code. Formatiere Code immer in Codeblöcken mit Sprachangabe.', suggestions: ['Erkläre async/await', 'Was ist ein REST API?', 'Bubble Sort in Python'] },
-  { id: 'cal',   label: 'Termine',   icon: Calendar,      defaultSystem: 'Du bist Clue, ein Kalender-Assistent. Hilf beim Planen von Terminen. Antworte auf Deutsch.', suggestions: ['Plane meine Woche', 'Erstelle einen Lernplan', 'Hilf mir mit Zeitmanagement'] },
+  { id: 'cal',   label: 'Termine',   icon: Calendar,      defaultSystem: 'Du bist Clue, ein intelligenter Kalender-Assistent. Du hast Zugriff auf den echten Google Kalender des Nutzers. Beantworte alle Fragen zu Terminen basierend auf den echten Kalenderdaten. Antworte auf Deutsch.', suggestions: ['Was sind meine nächsten Termine?', 'Was habe ich diese Woche?', 'Hilf mir mit Zeitmanagement'] },
 ]
 
 const MODELLE = [
@@ -93,7 +92,6 @@ const DEFAULT_SETTINGS = {
   ],
 }
 
-// ─── STORAGE ──────────────────────────────────────────────────────────────────
 function ladeChats() { try { return JSON.parse(localStorage.getItem('clue-chats') || '{}') } catch { return {} } }
 function speichereChats(c) { localStorage.setItem('clue-chats', JSON.stringify(c)) }
 function ladeSettings() { try { return { ...DEFAULT_SETTINGS, ...JSON.parse(localStorage.getItem('clue-settings') || '{}') } } catch { return DEFAULT_SETTINGS } }
@@ -383,8 +381,7 @@ function VerbindungenTab() {
   function toggleDetail(id) { setAktiveVerbindung(aktiveVerbindung === id ? null : id) }
 
   async function verbinden(id) {
-    const config = VERBINDUNGEN_CONFIG[id]
-    if (!config) return
+    const config = VERBINDUNGEN_CONFIG[id]; if (!config) return
     setVerbindeStatus(p => ({ ...p, [id]: 'connecting' }))
     if (id === 'google_cal') {
       const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
@@ -428,9 +425,9 @@ function VerbindungenTab() {
   async function ladeKalender(token) {
     try {
       const heute = new Date().toISOString()
-      const inZweiWochen = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
+      const in30Tage = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
       const res = await fetch(
-        `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${heute}&timeMax=${inZweiWochen}&maxResults=5&orderBy=startTime&singleEvents=true`,
+        `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${heute}&timeMax=${in30Tage}&maxResults=10&orderBy=startTime&singleEvents=true`,
         { headers: { Authorization: `Bearer ${token}` } }
       )
       const data = await res.json()
@@ -466,9 +463,7 @@ function VerbindungenTab() {
                     </div>
                     <div>
                       <div className="integration-name">{config.label}</div>
-                      <div className="integration-desc">
-                        Verbunden {verbindungen[id].ts && '· ' + new Date(verbindungen[id].ts).toLocaleDateString('de-DE')}
-                      </div>
+                      <div className="integration-desc">Verbunden {verbindungen[id].ts && '· ' + new Date(verbindungen[id].ts).toLocaleDateString('de-DE')}</div>
                     </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -1206,6 +1201,33 @@ function ChatApp({ user, onLogout }) {
     let quellen=[]; let systemPrompt=settings.systemPrompts[modusId]||aktiverModus.defaultSystem
     if(settings.responseLang!=='Wie die Eingabe')systemPrompt+=` Antworte immer auf ${settings.responseLang}.`
     if(dateiInfo?.typ==='text')systemPrompt+=`\n\nHochgeladenes Dokument (${dateiInfo.name}):\n\n${dateiInfo.inhalt.slice(0,8000)}`
+
+    // ── KALENDER DATEN IN SYSTEM PROMPT ──
+    try {
+      const verbindungen = JSON.parse(localStorage.getItem('clue-verbindungen') || '{}')
+      const token = verbindungen.google_cal?.token
+      if (token && modusId === 'cal') {
+        const heute = new Date().toISOString()
+        const in30Tage = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+        const res = await fetch(
+          `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${heute}&timeMax=${in30Tage}&maxResults=15&orderBy=startTime&singleEvents=true`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        )
+        const data = await res.json()
+        if (data.items && data.items.length > 0) {
+          const termine = data.items.map(e => {
+            const start = e.start?.dateTime || e.start?.date
+            const datum = start ? new Date(start) : null
+            const datumStr = datum ? datum.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : 'Unbekannt'
+            const zeitStr = e.start?.dateTime ? datum.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) + ' Uhr' : 'Ganztägig'
+            return `- ${e.summary || 'Kein Titel'}: ${datumStr} um ${zeitStr}${e.location ? ' | Ort: ' + e.location : ''}${e.description ? ' | Info: ' + e.description.slice(0, 100) : ''}`
+          }).join('\n')
+          systemPrompt += `\n\nAktuelle Kalender-Daten des Nutzers (Google Kalender, nächste 30 Tage):\n${termine}\n\nDu hast Zugriff auf diese echten Termine. Beantworte alle Fragen direkt basierend auf diesen Daten. Heute ist ${new Date().toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}.`
+        } else {
+          systemPrompt += `\n\nDer Google Kalender ist verbunden aber es gibt keine Termine in den nächsten 30 Tagen. Teile das dem Nutzer mit.`
+        }
+      }
+    } catch(e) { console.log('Kalender Fehler:', e) }
 
     let searchQuery = ''
     if(webSucheAktiv) {
