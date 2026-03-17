@@ -16,7 +16,7 @@ const MODI = [
   { id: 'docs',  label: 'Dokumente', icon: FileText,      defaultSystem: 'Du bist Clue, ein Experte für Dokumentenanalyse. Analysiere Dokumente präzise. Antworte auf Deutsch.', suggestions: ['Fasse diesen Text zusammen', 'Extrahiere die Kernpunkte', 'Erstelle eine Gliederung'] },
   { id: 'learn', label: 'Lernen',    icon: GraduationCap, defaultSystem: 'Du bist Clue, ein motivierender Lerncoach. Erkläre Konzepte einfach, stelle Quizfragen. Antworte auf Deutsch.', suggestions: ['Erkläre mir Rekursion', 'Quiz über Datenbanken', 'Was ist Big O Notation?'] },
   { id: 'code',  label: 'Code',      icon: Code2,         defaultSystem: 'Du bist Clue, ein erfahrener Senior-Entwickler. Hilf beim Schreiben und Debuggen von Code. Formatiere Code immer in Codeblöcken mit Sprachangabe.', suggestions: ['Erkläre async/await', 'Was ist ein REST API?', 'Bubble Sort in Python'] },
-  { id: 'cal',   label: 'Termine',   icon: Calendar,      defaultSystem: 'Du bist Clue, ein intelligenter Kalender-Assistent. Du hast Zugriff auf den echten Google Kalender des Nutzers. Zeige nur echte Termine die dir übergeben werden. Erfinde niemals Termine. Antworte auf Deutsch.', suggestions: ['Was sind meine nächsten Termine?', 'Was habe ich diese Woche?', 'Wann ist mein nächster Termin?'] },
+  { id: 'cal',   label: 'Termine',   icon: Calendar,      defaultSystem: 'Du bist Clue, ein intelligenter Kalender-Assistent. Du hast Zugriff auf den echten Google Kalender des Nutzers. Zeige nur echte Termine. Erfinde niemals Termine. Antworte auf Deutsch.', suggestions: ['Was sind meine nächsten Termine?', 'Erstelle einen Termin morgen um 14 Uhr', 'Was habe ich diese Woche?'] },
 ]
 
 const MODELLE = [
@@ -28,18 +28,14 @@ const MODELLE = [
 ]
 
 const VERBINDUNGEN_CONFIG = {
-  google_cal: {
-    label: 'Google Kalender', desc: 'Termine lesen & erstellen',
-    icon: Calendar, color: '#4285F4',
-    features: ['Termine anzeigen', 'Neue Termine erstellen', 'Erinnerungen'],
-  },
-  notion: { label: 'Notion', desc: 'Seiten & Datenbanken', icon: BookOpen, color: '#ffffff', features: ['Seiten durchsuchen', 'Inhalte zusammenfassen'], comingSoon: true },
-  github: { label: 'GitHub', desc: 'Repos & Issues', icon: Code2, color: '#f0f6fc', features: ['Repos durchsuchen', 'Issues lesen'], comingSoon: true },
-  slack: { label: 'Slack', desc: 'Nachrichten & Kanäle', icon: Hash, color: '#4A154B', features: ['Nachrichten lesen', 'Kanäle durchsuchen'], comingSoon: true },
-  todoist: { label: 'Todoist', desc: 'Aufgaben synchronisieren', icon: CheckSquare, color: '#DB4035', features: ['Aufgaben anzeigen', 'Neue erstellen'], comingSoon: true },
-  obsidian: { label: 'Obsidian', desc: 'Notizen & Wissensbase', icon: FileText, color: '#7C3AED', features: ['Notizen durchsuchen', 'Analysieren'], comingSoon: true },
-  google_drive: { label: 'Google Drive', desc: 'Dateien & Dokumente', icon: Upload, color: '#0F9D58', features: ['Dateien durchsuchen', 'Lesen'], comingSoon: true },
-  chrome: { label: 'Chrome Extension', desc: 'Browser-Integration', icon: Globe, color: '#4285F4', features: ['Seite analysieren', 'Text markieren'], comingSoon: true },
+  google_cal: { label: 'Google Kalender', desc: 'Termine lesen & erstellen', icon: Calendar, color: '#4285F4', features: ['Termine anzeigen', 'Termine erstellen', 'Erinnerungen'] },
+  notion:      { label: 'Notion',          desc: 'Seiten & Datenbanken',      icon: BookOpen,    color: '#ffffff', features: ['Seiten durchsuchen', 'Zusammenfassen'],    comingSoon: true },
+  github:      { label: 'GitHub',          desc: 'Repos & Issues',            icon: Code2,       color: '#f0f6fc', features: ['Repos durchsuchen', 'Issues lesen'],       comingSoon: true },
+  slack:       { label: 'Slack',           desc: 'Nachrichten & Kanäle',      icon: Hash,        color: '#4A154B', features: ['Nachrichten lesen', 'Suchen'],             comingSoon: true },
+  todoist:     { label: 'Todoist',         desc: 'Aufgaben synchronisieren',  icon: CheckSquare, color: '#DB4035', features: ['Aufgaben anzeigen', 'Erstellen'],          comingSoon: true },
+  obsidian:    { label: 'Obsidian',        desc: 'Notizen & Wissensbase',     icon: FileText,    color: '#7C3AED', features: ['Notizen durchsuchen', 'Analysieren'],      comingSoon: true },
+  google_drive:{ label: 'Google Drive',    desc: 'Dateien & Dokumente',       icon: Upload,      color: '#0F9D58', features: ['Dateien durchsuchen', 'Lesen'],            comingSoon: true },
+  chrome:      { label: 'Chrome Extension',desc: 'Browser-Integration',       icon: Globe,       color: '#4285F4', features: ['Seite analysieren', 'Text markieren'],     comingSoon: true },
 }
 
 const DEFAULT_SETTINGS = {
@@ -53,7 +49,7 @@ const DEFAULT_SETTINGS = {
   schnellantworten: [
     { id: '1', titel: 'Zusammenfassen', text: 'Fasse das bitte kurz und prägnant zusammen.' },
     { id: '2', titel: 'Erklär einfach', text: 'Erkläre das so, als wäre ich ein Anfänger.' },
-    { id: '3', titel: 'Code Review', text: 'Überprüfe diesen Code auf Fehler und Verbesserungen.' },
+    { id: '3', titel: 'Code Review',    text: 'Überprüfe diesen Code auf Fehler und Verbesserungen.' },
   ],
 }
 
@@ -65,27 +61,39 @@ function neuerChat(modusId) { return { id: Date.now().toString(), modusId, titel
 function ladeVerbindungen() { try { return JSON.parse(localStorage.getItem('clue-verbindungen') || '{}') } catch { return {} } }
 function speichereVerbindungen(v) { localStorage.setItem('clue-verbindungen', JSON.stringify(v)) }
 
-// ─── KALENDER FUNKTION ────────────────────────────────────────────────────────
+// ─── KALENDER FUNKTIONEN ──────────────────────────────────────────────────────
 async function ladeKalenderDaten(token) {
   try {
     const heute = new Date().toISOString()
     const in30Tage = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-    console.log('🗓️ Lade Kalender mit Token:', token.slice(0, 20) + '...')
     const res = await fetch(
       `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${heute}&timeMax=${in30Tage}&maxResults=15&orderBy=startTime&singleEvents=true`,
       { headers: { Authorization: `Bearer ${token}` } }
     )
     const data = await res.json()
-    console.log('🗓️ Kalender API Antwort:', data)
-    if (data.error) {
-      console.error('🗓️ Kalender API Fehler:', data.error)
-      return null
-    }
+    if (data.error) return null
     return data.items || []
-  } catch (e) {
-    console.error('🗓️ Kalender fetch Fehler:', e)
-    return null
-  }
+  } catch { return null }
+}
+
+async function erstelleKalenderTermin(token, titel, datum, uhrzeit, beschreibung = '') {
+  try {
+    const startDatum = new Date(`${datum}T${uhrzeit}:00`)
+    const endDatum = new Date(startDatum.getTime() + 60 * 60 * 1000)
+    const event = {
+      summary: titel,
+      description: beschreibung,
+      start: { dateTime: startDatum.toISOString(), timeZone: 'Europe/Berlin' },
+      end: { dateTime: endDatum.toISOString(), timeZone: 'Europe/Berlin' },
+    }
+    const res = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(event),
+    })
+    const data = await res.json()
+    return data
+  } catch { return null }
 }
 
 // ─── ONBOARDING ───────────────────────────────────────────────────────────────
@@ -109,11 +117,11 @@ const OB_SLIDES = [
     visual: () => (
       <div className="ob-modes-visual">
         {[
-          { icon: MessageCircle, label: 'Chat', color: '#818cf8', desc: 'Fragen, Ideen, Gespräche' },
-          { icon: FileText, label: 'Dokumente', color: '#34d399', desc: 'Texte analysieren' },
-          { icon: GraduationCap, label: 'Lernen', color: '#fbbf24', desc: 'Quizfragen & Erklärungen' },
-          { icon: Code2, label: 'Code', color: '#60a5fa', desc: 'Schreiben & debuggen' },
-          { icon: Calendar, label: 'Termine', color: '#f472b6', desc: 'Planen & organisieren' },
+          { icon: MessageCircle, label: 'Chat',      color: '#818cf8', desc: 'Fragen, Ideen, Gespräche' },
+          { icon: FileText,      label: 'Dokumente', color: '#34d399', desc: 'Texte analysieren' },
+          { icon: GraduationCap, label: 'Lernen',    color: '#fbbf24', desc: 'Quizfragen & Erklärungen' },
+          { icon: Code2,         label: 'Code',      color: '#60a5fa', desc: 'Schreiben & debuggen' },
+          { icon: Calendar,      label: 'Termine',   color: '#f472b6', desc: 'Planen & organisieren' },
         ].map((m, i) => { const Icon = m.icon; return (
           <div key={i} className="ob-mode-card" style={{ animationDelay: `${i * 0.08}s` }}>
             <div className="ob-mode-icon" style={{ background: m.color + '20', color: m.color }}><Icon size={16} strokeWidth={1.8} /></div>
@@ -128,10 +136,10 @@ const OB_SLIDES = [
     visual: () => (
       <div className="ob-features-visual">
         {[
-          { icon: Globe, color: '#60a5fa', label: 'Google-Suche', desc: 'Aktuelle Infos direkt im Chat' },
-          { icon: Mic, color: '#f472b6', label: 'Spracheingabe', desc: 'Einfach drauflosreden' },
-          { icon: FileText, color: '#34d399', label: 'Datei-Upload', desc: 'PDFs & Bilder analysieren' },
-          { icon: Zap, color: '#fbbf24', label: 'Vorlagen', desc: 'Schnellantworten speichern' },
+          { icon: Globe,    color: '#60a5fa', label: 'Google-Suche',  desc: 'Aktuelle Infos direkt im Chat' },
+          { icon: Mic,      color: '#f472b6', label: 'Spracheingabe', desc: 'Einfach drauflosreden' },
+          { icon: FileText, color: '#34d399', label: 'Datei-Upload',  desc: 'PDFs & Bilder analysieren' },
+          { icon: Zap,      color: '#fbbf24', label: 'Vorlagen',      desc: 'Schnellantworten speichern' },
         ].map((f, i) => { const Icon = f.icon; return (
           <div key={i} className="ob-feature-item" style={{ animationDelay: `${i * 0.1}s` }}>
             <div className="ob-feature-icon" style={{ background: f.color + '15', color: f.color }}><Icon size={18} strokeWidth={1.8} /></div>
@@ -362,16 +370,11 @@ function VerbindungenTab() {
     setVerbindeStatus(p => ({ ...p, [id]: 'connecting' }))
     if (id === 'google_cal') {
       const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
-      if (!clientId) {
-        alert('VITE_GOOGLE_CLIENT_ID fehlt!')
-        setVerbindeStatus(p => ({ ...p, [id]: null })); return
-      }
+      if (!clientId) { alert('VITE_GOOGLE_CLIENT_ID fehlt!'); setVerbindeStatus(p => ({ ...p, [id]: null })); return }
       const params = new URLSearchParams({
         client_id: clientId, redirect_uri: window.location.origin,
-        response_type: 'token',
-        scope: 'https://www.googleapis.com/auth/calendar',
-        include_granted_scopes: 'true',
-        prompt: 'consent',
+        response_type: 'token', scope: 'https://www.googleapis.com/auth/calendar',
+        include_granted_scopes: 'true', prompt: 'consent',
       })
       const popup = window.open(`https://accounts.google.com/o/oauth2/v2/auth?${params}`, 'google-oauth', 'width=500,height=600,left=200,top=100')
       const check = setInterval(() => {
@@ -385,7 +388,7 @@ function VerbindungenTab() {
               const next = { ...verbindungen, [id]: { token, ts: Date.now() } }
               setVerbindungen(next); speichereVerbindungen(next)
               setVerbindeStatus(p => ({ ...p, [id]: null }))
-              ladeKalenderVorschau(token)
+              ladeKalenderDaten(token).then(items => setKalenderDaten(items || []))
             }
           }
         } catch {}
@@ -400,13 +403,9 @@ function VerbindungenTab() {
     setAktiveVerbindung(null)
   }
 
-  async function ladeKalenderVorschau(token) {
-    const items = await ladeKalenderDaten(token)
-    setKalenderDaten(items || [])
-  }
-
   useEffect(() => {
-    if (verbindungen.google_cal?.token && !kalenderDaten) ladeKalenderVorschau(verbindungen.google_cal.token)
+    if (verbindungen.google_cal?.token && !kalenderDaten)
+      ladeKalenderDaten(verbindungen.google_cal.token).then(items => setKalenderDaten(items || []))
   }, [])
 
   return (
@@ -492,9 +491,7 @@ function VerbindungenTab() {
                 </div>
               </div>
               <div className="integration-right">
-                {config.comingSoon ? (
-                  <span className="coming-soon-badge">Bald</span>
-                ) : (
+                {config.comingSoon ? <span className="coming-soon-badge">Bald</span> : (
                   <button className={`integration-connect-btn ${isConnecting ? 'connecting' : ''}`} onClick={() => verbinden(id)} disabled={isConnecting}>
                     {isConnecting ? <><div className="connect-spinner" /> Verbinde...</> : <><Link size={12} /> Verbinden</>}
                   </button>
@@ -562,7 +559,6 @@ function SettingsModal({ isOpen, onClose, user, settings, onSettingsChange, chat
   const suchergebnisse = suchbegriff.trim().length > 1
     ? Object.values(chats).flat().filter(c => c.nachrichten?.some(m => m.text?.toLowerCase().includes(suchbegriff.toLowerCase())) || c.titel?.toLowerCase().includes(suchbegriff.toLowerCase()))
     : []
-
   const totalNachrichten = Object.values(chats).flat().reduce((acc, c) => acc + (c.nachrichten?.length || 0), 0)
   const totalChats = Object.values(chats).flat().length
 
@@ -1046,20 +1042,13 @@ function ChatApp({ user, onLogout }) {
   const modusChats = chats[aktiverModusId] || []
   const aktiverChat = modusChats.find(c => c.id === aktiverChatId) || null
   const nachrichten = aktiverChat?.nachrichten || []
-
   const alleChatsSuche = sidebarSuche.trim().length > 0
     ? Object.values(chats).flat().filter(c => c.titel?.toLowerCase().includes(sidebarSuche.toLowerCase()) || c.nachrichten?.some(m => m.text?.toLowerCase().includes(sidebarSuche.toLowerCase())))
     : modusChats
 
   useEffect(() => { document.body.setAttribute('data-theme', settings.theme) }, [settings.theme])
-  useEffect(() => {
-    const sizes = {small:'13px',medium:'14px',large:'16px'}
-    document.documentElement.style.setProperty('--chat-font-size', sizes[settings.fontSize]||'14px')
-  }, [settings.fontSize])
-  useEffect(() => {
-    const spacings = {compact:'4px',comfortable:'8px',spacious:'16px'}
-    document.documentElement.style.setProperty('--msg-spacing', spacings[settings.messageSpacing]||'8px')
-  }, [settings.messageSpacing])
+  useEffect(() => { document.documentElement.style.setProperty('--chat-font-size', {small:'13px',medium:'14px',large:'16px'}[settings.fontSize]||'14px') }, [settings.fontSize])
+  useEffect(() => { document.documentElement.style.setProperty('--msg-spacing', {compact:'4px',comfortable:'8px',spacious:'16px'}[settings.messageSpacing]||'8px') }, [settings.messageSpacing])
   useEffect(() => { bottomRef.current?.scrollIntoView({behavior:'smooth'}) }, [nachrichten, laedt])
 
   useEffect(() => {
@@ -1126,11 +1115,13 @@ function ChatApp({ user, onLogout }) {
         const updated=(prev[modusId]||[]).map(c=>{if(c.id!==chatId)return c;const msgs=[...c.nachrichten];msgs[msgs.length-1]={...kiNachricht,text};return{...c,nachrichten:msgs}})
         const next={...prev,[modusId]:updated};speichereChats(next);return next
       })
+      return text
     } catch(fehler) {
       setChats(prev=>{
         const updated=(prev[modusId]||[]).map(c=>{if(c.id!==chatId)return c;const msgs=[...c.nachrichten];msgs[msgs.length-1]={...kiNachricht,text:'❌ Fehler: '+fehler.message};return{...c,nachrichten:msgs}})
         const next={...prev,[modusId]:updated};speichereChats(next);return next
       })
+      return null
     }
   }
 
@@ -1161,16 +1152,14 @@ function ChatApp({ user, onLogout }) {
     if(settings.responseLang!=='Wie die Eingabe')systemPrompt+=` Antworte immer auf ${settings.responseLang}.`
     if(dateiInfo?.typ==='text')systemPrompt+=`\n\nHochgeladenes Dokument (${dateiInfo.name}):\n\n${dateiInfo.inhalt.slice(0,8000)}`
 
-    // ── KALENDER DATEN ──────────────────────────────────────────────────────────
+    // ── KALENDER ──────────────────────────────────────────────────────────────
+    let kalenderToken = null
     if (modusId === 'cal') {
       const verbindungen = ladeVerbindungen()
-      const token = verbindungen.google_cal?.token
-      console.log('📅 Termine-Modus aktiv. Token vorhanden:', !!token)
+      kalenderToken = verbindungen.google_cal?.token
 
-      if (token) {
-        const items = await ladeKalenderDaten(token)
-        console.log('📅 Geladene Termine:', items)
-
+      if (kalenderToken) {
+        const items = await ladeKalenderDaten(kalenderToken)
         if (items && items.length > 0) {
           const heute = new Date()
           const termine = items.map(e => {
@@ -1181,15 +1170,23 @@ function ChatApp({ user, onLogout }) {
             return `- "${e.summary || 'Kein Titel'}": ${datumStr}${e.start?.dateTime ? ' um ' + zeitStr : ''}${e.location ? ' | Ort: ' + e.location : ''}`
           }).join('\n')
 
-          systemPrompt += `\n\n=== GOOGLE KALENDER DATEN ===\nHeute ist ${heute.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}.\n\nNächste Termine:\n${termine}\n\nWICHTIG: Nutze AUSSCHLIESSLICH diese Termine. Erfinde KEINE eigenen Termine. Sage dem Nutzer genau welche Termine er hat basierend auf dieser Liste.`
-          console.log('📅 System Prompt mit Terminen erstellt, Anzahl:', items.length)
-        } else if (items && items.length === 0) {
-          systemPrompt += `\n\n=== GOOGLE KALENDER DATEN ===\nGoogle Kalender ist verbunden. Es gibt KEINE Termine in den nächsten 30 Tagen. Teile das dem Nutzer mit.`
-        } else {
-          systemPrompt += `\n\n=== GOOGLE KALENDER ===\nFehler beim Laden der Termine. Bitte den Nutzer die Verbindung in den Einstellungen neu herzustellen.`
+          systemPrompt += `\n\n=== GOOGLE KALENDER ===
+Heute ist ${heute.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}.
+
+Nächste Termine:
+${termine}
+
+Du kannst:
+1. Termine ANZEIGEN aus der Liste oben
+2. Termine ERSTELLEN — wenn der Nutzer einen Termin erstellen möchte, frage nach Titel, Datum und Uhrzeit. Sobald du alle Infos hast, antworte mit EXAKT diesem Format am Ende:
+[TERMIN_ERSTELLEN: titel="TITEL" datum="YYYY-MM-DD" uhrzeit="HH:MM"]
+
+WICHTIG: Erfinde KEINE Termine. Nutze NUR die echten Termine aus der Liste.`
+        } else if (items) {
+          systemPrompt += `\n\n=== GOOGLE KALENDER ===\nVerbunden. Keine Termine in den nächsten 30 Tagen.`
         }
       } else {
-        systemPrompt += `\n\nKein Google Kalender verbunden. Weise den Nutzer darauf hin, in Einstellungen → Verbindungen → Google Kalender zu verbinden.`
+        systemPrompt += `\n\nKein Google Kalender verbunden. Weise den Nutzer auf Einstellungen → Verbindungen hin.`
       }
     }
 
@@ -1197,10 +1194,37 @@ function ChatApp({ user, onLogout }) {
     if(webSucheAktiv) {
       searchQuery = frageText
       quellen=await webSuche(frageText)
-      if(quellen.length>0)systemPrompt+=`\n\nAktuelle Internetinfos:\n${quellen.map(q=>`${q.title} (${q.domain}): ${q.snippet}`).join('\n\n')}`
+      if(quellen.length>0)systemPrompt+=`\n\nInternetinfos:\n${quellen.map(q=>`${q.title} (${q.domain}): ${q.snippet}`).join('\n\n')}`
     }
 
-    await apiCall(chatId,modusId,aktualisiert,systemPrompt,quellen,searchQuery)
+    const antwortText = await apiCall(chatId, modusId, aktualisiert, systemPrompt, quellen, searchQuery)
+
+    // ── TERMIN ERSTELLEN ──────────────────────────────────────────────────────
+    if (antwortText && kalenderToken && modusId === 'cal') {
+      const terminMatch = antwortText.match(/\[TERMIN_ERSTELLEN: titel="([^"]+)" datum="([^"]+)" uhrzeit="([^"]+)"\]/)
+      if (terminMatch) {
+        const [, titel, datum, uhrzeit] = terminMatch
+        const erstellt = await erstelleKalenderTermin(kalenderToken, titel, datum, uhrzeit)
+        if (erstellt?.id) {
+          const datumFormatiert = new Date(`${datum}T${uhrzeit}`).toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' })
+          setChats(prev => {
+            const updated = (prev[modusId] || []).map(c => {
+              if (c.id !== chatId) return c
+              const msgs = [...c.nachrichten]
+              const letzteMsg = msgs[msgs.length - 1]
+              msgs[msgs.length - 1] = {
+                ...letzteMsg,
+                text: letzteMsg.text.replace(/\[TERMIN_ERSTELLEN:[^\]]+\]/, '') +
+                  `\n\n✅ Termin **"${titel}"** wurde erfolgreich am ${datumFormatiert} um ${uhrzeit} Uhr in deinen Google Kalender eingetragen!`
+              }
+              return { ...c, nachrichten: msgs }
+            })
+            const next = { ...prev, [modusId]: updated }; speichereChats(next); return next
+          })
+        }
+      }
+    }
+
     setLaedt(false)
   }
 
@@ -1225,9 +1249,7 @@ function ChatApp({ user, onLogout }) {
           </div>
           <div className="sidebar-logo-row">
             <div className="logo">Clue</div>
-            <button className="icon-btn sidebar-toggle-btn" onClick={()=>setSidebarOffen(false)} title="Sidebar ausblenden (Cmd+B)">
-              <PanelLeftClose size={15} strokeWidth={1.8}/>
-            </button>
+            <button className="icon-btn sidebar-toggle-btn" onClick={()=>setSidebarOffen(false)} title="Sidebar ausblenden (Cmd+B)"><PanelLeftClose size={15} strokeWidth={1.8}/></button>
           </div>
           {!sidebarSuche && (
             <div className="sidebar-modi">
@@ -1278,11 +1300,7 @@ function ChatApp({ user, onLogout }) {
         <main className="main">
           <div className="chat-header glass-header">
             <div className="chat-header-left">
-              {!sidebarOffen && (
-                <button className="icon-btn sidebar-toggle-btn" onClick={()=>setSidebarOffen(true)} title="Sidebar einblenden (Cmd+B)">
-                  <PanelLeftOpen size={16} strokeWidth={1.8}/>
-                </button>
-              )}
+              {!sidebarOffen && <button className="icon-btn sidebar-toggle-btn" onClick={()=>setSidebarOffen(true)} title="Sidebar einblenden (Cmd+B)"><PanelLeftOpen size={16} strokeWidth={1.8}/></button>}
               <span className="chat-header-titel">{aktiverChat?aktiverChat.titel:aktiverModus.label}</span>
               <span className="modus-badge">{(()=>{const Icon=aktiverModus.icon;return<Icon size={11} strokeWidth={2}/>})()}{aktiverModus.label}</span>
             </div>
@@ -1336,11 +1354,7 @@ function ChatApp({ user, onLogout }) {
               <div className="modi-pills">
                 {MODI.map(modus=>{
                   const Icon=modus.icon; const aktiv=aktiverModusId===modus.id
-                  return (
-                    <button key={modus.id} className={`modus-pill ${aktiv?'aktiv':''}`} onClick={()=>setAktiverModusId(modus.id)}>
-                      <Icon size={11} strokeWidth={2}/>{modus.label}
-                    </button>
-                  )
+                  return <button key={modus.id} className={`modus-pill ${aktiv?'aktiv':''}`} onClick={()=>setAktiverModusId(modus.id)}><Icon size={11} strokeWidth={2}/>{modus.label}</button>
                 })}
               </div>
               <textarea ref={textareaRef} value={eingabe}
